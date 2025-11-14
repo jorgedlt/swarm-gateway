@@ -61,7 +61,15 @@ The Swarm Gateway provides a secure HTTP interface for AI agents and external pr
 
 ## Build and Run
 
+### Standalone
 ```bash
 docker build -t swarm-gateway .
 docker run -e API_KEY=yourkey -p 8000:8000 swarm-gateway
 ```
+
+### Full Swarm Integration
+Use the provided `docker-compose.yml` to deploy the entire Swarm system:
+```bash
+docker-compose up --build
+```
+This starts all pods (natscore, logger, gateway, vaultctl, cronctl, shepard) with proper networking and dependencies.
