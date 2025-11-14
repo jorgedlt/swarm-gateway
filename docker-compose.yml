@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  natscore:
+    image: swarm-natscore:latest
+    ports:
+      - "4222:4222"
+    networks:
+      - swarm-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8222/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  logger:
+    image: swarm-logger:latest
+    depends_on:
+      natscore:
+        condition: service_healthy
+    environment:
+      - NATS_URL=nats://natscore:4222
+    networks:
+      - swarm-net
+    volumes:
+      - logs:/app/logs
+    restart: unless-stopped
+
+  gateway:
+    image: swarm-gateway:latest
+    ports:
+      - "8000:8000"
+    depends_on:
+      natscore:
+        condition: service_healthy
+    environment:
+      - NATS_URL=nats://natscore:4222
+      - API_KEY=your_secure_api_key_here
+    networks:
+      - swarm-net
+    restart: unless-stopped
+
+  vaultctl:
+    image: swarm-vaultctl:latest
+    depends_on:
+      natscore:
+        condition: service_healthy
+    environment:
+      - NATS_URL=nats://natscore:4222
+    networks:
+      - swarm-net
+    volumes:
+      - vault-data:/app/data
+    restart: unless-stopped
+
+  cronctl:
+    image: swarm-cronctl:latest
+    depends_on:
+      natscore:
+        condition: service_healthy
+    environment:
+      - NATS_URL=nats://natscore:4222
+    networks:
+      - swarm-net
+    restart: unless-stopped
+
+  shepard:
+    image: swarm-shepard:latest
+    depends_on:
+      - natscore
+      - logger
+      - gateway
+      - vaultctl
+      - cronctl
+    environment:
+      - NATS_URL=nats://natscore:4222
+    networks:
+      - swarm-net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+networks:
+  swarm-net:
+    driver: bridge
+
+volumes:
+  logs:
+  vault-data:
